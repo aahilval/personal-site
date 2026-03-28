@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useIsMobile } from "@/hooks/useIsMobile";
 
 interface MacWindowProps {
   title: string;
@@ -27,6 +28,7 @@ export function MacWindow({
   zIndex = 10,
   onFocus,
 }: MacWindowProps) {
+  const isMobile = useIsMobile();
   const [pos, setPos] = useState<{ x: number; y: number } | null>(
     x !== undefined && y !== undefined ? { x, y } : null
   );
@@ -34,6 +36,7 @@ export function MacWindow({
   const dragOffset = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
+    if (isMobile) return;
     if (x !== undefined) {
       setPos((prev) => ({
         x,
@@ -45,17 +48,18 @@ export function MacWindow({
         y: (window.innerHeight - height) / 2 - 30,
       });
     }
-  }, [x, y, width, height]);
+  }, [x, y, width, height, isMobile]);
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
+      if (isMobile) return;
       if ((e.target as HTMLElement).closest(".traffic-light")) return;
       if (!pos) return;
       setIsDragging(true);
       dragOffset.current = { x: e.clientX - pos.x, y: e.clientY - pos.y };
       onFocus?.();
     },
-    [pos, onFocus]
+    [pos, onFocus, isMobile]
   );
 
   useEffect(() => {
@@ -74,6 +78,94 @@ export function MacWindow({
 
   const titleBarHeight = 30;
 
+  // Mobile: full-screen layout, no positioning
+  if (isMobile) {
+    return (
+      <div
+        className="window-appear"
+        style={{
+          position: isMain ? "fixed" : "relative",
+          inset: isMain ? 0 : undefined,
+          width: "100%",
+          height: isMain ? "100%" : undefined,
+          zIndex,
+          display: "flex",
+          flexDirection: "column",
+        }}
+        onMouseDown={onFocus}
+      >
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            height: isMain ? "100%" : undefined,
+            borderRadius: isMain ? 0 : 10,
+            overflow: "hidden",
+            background: "#1a1b26",
+            boxShadow: isMain ? "none" : "0 20px 60px rgba(0,0,0,0.5), 0 0 0 0.5px rgba(255,255,255,0.08)",
+          }}
+        >
+          {/* Title bar */}
+          <div
+            style={{
+              height: titleBarHeight,
+              background: "#24273a",
+              borderBottom: "1px solid rgba(255,255,255,0.05)",
+              display: "flex",
+              alignItems: "center",
+              paddingLeft: 12,
+              paddingRight: 12,
+              flexShrink: 0,
+            }}
+          >
+            {/* Traffic lights */}
+            <div className="traffic-light group/tl" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <button
+                onClick={onClose}
+                style={{
+                  width: 12, height: 12, borderRadius: "50%", backgroundColor: "#ff5f57",
+                  border: "none", padding: 0, cursor: "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}
+              >
+                <svg className="opacity-0 group-hover/tl:opacity-100 transition-opacity" width="6" height="6" viewBox="0 0 6 6" fill="none" stroke="#4d0000" strokeWidth="1.5">
+                  <path d="M0.5 0.5L5.5 5.5M5.5 0.5L0.5 5.5" />
+                </svg>
+              </button>
+              <div style={{ width: 12, height: 12, borderRadius: "50%", backgroundColor: "#febc2e", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <svg className="opacity-0 group-hover/tl:opacity-100 transition-opacity" width="6" height="2" viewBox="0 0 6 2" fill="none" stroke="#946800" strokeWidth="1.5"><path d="M0.5 1H5.5" /></svg>
+              </div>
+              <div style={{ width: 12, height: 12, borderRadius: "50%", backgroundColor: "#28c840", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <svg className="opacity-0 group-hover/tl:opacity-100 transition-opacity" width="6" height="6" viewBox="0 0 8 8" fill="none" stroke="#006500" strokeWidth="1.2"><path d="M1 4.5L3.5 7L7 1" /></svg>
+              </div>
+            </div>
+
+            <div style={{ flex: 1, textAlign: "center" }}>
+              <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", fontFamily: '"JetBrains Mono", "SF Mono", "Menlo", "Monaco", monospace', fontWeight: 400 }}>
+                {title}
+              </span>
+            </div>
+            <div style={{ width: 52 }} />
+          </div>
+
+          {/* Content */}
+          <div
+            style={{
+              flex: 1,
+              overflowY: isMain ? "hidden" : "auto",
+              overflowX: "hidden",
+              WebkitOverflowScrolling: "touch",
+            }}
+            className={isMain ? "" : "scroll-hidden"}
+          >
+            {children}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Desktop: original positioned/draggable layout
   if (!pos) return null;
 
   return (
@@ -135,33 +227,19 @@ export function MacWindow({
             </button>
             <div
               style={{
-                width: 12,
-                height: 12,
-                borderRadius: "50%",
-                backgroundColor: "#febc2e",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
+                width: 12, height: 12, borderRadius: "50%", backgroundColor: "#febc2e",
+                display: "flex", alignItems: "center", justifyContent: "center",
               }}
             >
-              <svg className="opacity-0 group-hover/tl:opacity-100 transition-opacity" width="6" height="2" viewBox="0 0 6 2" fill="none" stroke="#946800" strokeWidth="1.5">
-                <path d="M0.5 1H5.5" />
-              </svg>
+              <svg className="opacity-0 group-hover/tl:opacity-100 transition-opacity" width="6" height="2" viewBox="0 0 6 2" fill="none" stroke="#946800" strokeWidth="1.5"><path d="M0.5 1H5.5" /></svg>
             </div>
             <div
               style={{
-                width: 12,
-                height: 12,
-                borderRadius: "50%",
-                backgroundColor: "#28c840",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
+                width: 12, height: 12, borderRadius: "50%", backgroundColor: "#28c840",
+                display: "flex", alignItems: "center", justifyContent: "center",
               }}
             >
-              <svg className="opacity-0 group-hover/tl:opacity-100 transition-opacity" width="6" height="6" viewBox="0 0 8 8" fill="none" stroke="#006500" strokeWidth="1.2">
-                <path d="M1 4.5L3.5 7L7 1" />
-              </svg>
+              <svg className="opacity-0 group-hover/tl:opacity-100 transition-opacity" width="6" height="6" viewBox="0 0 8 8" fill="none" stroke="#006500" strokeWidth="1.2"><path d="M1 4.5L3.5 7L7 1" /></svg>
             </div>
           </div>
 

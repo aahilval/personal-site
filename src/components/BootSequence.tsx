@@ -53,7 +53,7 @@ export function BootSequence({ onComplete }: BootSequenceProps) {
         transition: "opacity 1s ease-in-out",
       }}
     >
-      <div style={{ width: 360, fontSize: 11, lineHeight: 1.8 }}>
+      <div style={{ width: "100%", maxWidth: 360, padding: "0 24px", fontSize: 11, lineHeight: 1.8 }}>
         {BOOT_LINES.slice(0, visibleLines).map((line, i) => (
           <div
             key={i}

@@ -89,3 +89,11 @@ html, body {
   width: 0 !important;
   height: 0 !important;
 }
+
+/* Mobile: prevent iOS bounce and ensure touch scrolling */
+@media (max-width: 767px) {
+  html, body {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: none;
+  }
+}

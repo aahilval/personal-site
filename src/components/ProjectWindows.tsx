@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { MacWindow } from "./MacWindow";
+import { useIsMobile } from "@/hooks/useIsMobile";
 
 interface ProjectWindowsProps {
   projectId: string;
@@ -150,6 +151,34 @@ function getWindows(projectId: string): WindowDef[] {
   }
 }
 
+/* ─── Mobile Content Variants (no iframes, simpler layout) ─── */
+
+function getMobileContent(projectId: string): { title: string; content: React.ReactNode }[] {
+  switch (projectId) {
+    case "safekids":
+      return [
+        { title: "SafeKids.ai — Overview", content: <SafeKidsAbout /> },
+        { title: "Media & Press", content: <SafeKidsPress /> },
+        { title: "Patents", content: <SafeKidsPatents /> },
+      ];
+    case "nrl":
+      return [
+        { title: "NRL — Solar Flare Research", content: <NRLOverview /> },
+        { title: "Presentations & Impact", content: <NRLPresentations /> },
+      ];
+    case "vacha":
+      return [
+        { title: "Vacha — Overview", content: <VachaOverview /> },
+      ];
+    case "deed":
+      return [
+        { title: "Deed — Waitlist", content: <DeedWaitlist /> },
+      ];
+    default:
+      return [];
+  }
+}
+
 export function ProjectWindows({
   projectId,
   onClose,
@@ -157,6 +186,111 @@ export function ProjectWindows({
   onFocusWindow,
   focusedWindow,
 }: ProjectWindowsProps) {
+  const isMobile = useIsMobile();
+
+  // Mobile: full-screen scrollable overlay
+  if (isMobile) {
+    const panels = getMobileContent(projectId);
+    return (
+      <div
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 100,
+          background: "#1a1b26",
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+        }}
+      >
+        {/* Header */}
+        <div
+          style={{
+            height: 44,
+            background: "#24273a",
+            borderBottom: "1px solid rgba(255,255,255,0.05)",
+            display: "flex",
+            alignItems: "center",
+            paddingLeft: 14,
+            paddingRight: 14,
+            flexShrink: 0,
+          }}
+        >
+          <div style={{ transform: "scale(0.75)", transformOrigin: "left center" }}>
+            <button
+              onClick={onClose}
+              style={{
+                background: "none",
+                border: "none",
+                color: "#5de4c7",
+                fontSize: 12,
+                cursor: "pointer",
+                padding: "4px 8px",
+                display: "flex",
+                alignItems: "center",
+                gap: 4,
+              }}
+            >
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#5de4c7" strokeWidth="2">
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
+              back
+            </button>
+          </div>
+          <div style={{ flex: 1, textAlign: "center" }}>
+            <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>
+              {projectId}
+            </span>
+          </div>
+          <div style={{ width: 48 }} />
+        </div>
+
+        {/* Scrollable content */}
+        <div
+          className="scroll-hidden"
+          style={{
+            flex: 1,
+            overflowY: "auto",
+            WebkitOverflowScrolling: "touch",
+            padding: "12px 12px 24px",
+            display: "flex",
+            flexDirection: "column",
+            gap: 12,
+          }}
+        >
+          {panels.map((panel, i) => (
+            <div
+              key={i}
+              style={{
+                borderRadius: 10,
+                overflow: "hidden",
+                background: "#1a1b26",
+                border: "1px solid rgba(255,255,255,0.06)",
+                flexShrink: 0,
+              }}
+            >
+              <div
+                style={{
+                  height: 28,
+                  background: "#24273a",
+                  borderBottom: "1px solid rgba(255,255,255,0.05)",
+                  display: "flex",
+                  alignItems: "center",
+                  paddingLeft: 12,
+                  flexShrink: 0,
+                }}
+              >
+                <span style={{ fontSize: 10, color: "rgba(255,255,255,0.3)" }}>{panel.title}</span>
+              </div>
+              <div style={{ minHeight: 200 }}>{panel.content}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // Desktop: original positioned windows
   const windows = getWindows(projectId);
   const cx = typeof window !== "undefined" ? window.innerWidth / 2 : 700;
   const cy = typeof window !== "undefined" ? window.innerHeight / 2 : 400;
@@ -221,7 +355,7 @@ function SafeKidsBrowser() {
 
 function SafeKidsAbout() {
   return (
-    <div className="terminal-scroll" style={{ padding: 14, fontSize: 11, lineHeight: 1.6, overflowY: "auto", maxHeight: "100%", height: "100%" }}>
+    <div className="terminal-scroll" style={{ padding: 14, fontSize: 11, lineHeight: 1.6, overflowY: "auto" }}>
       <p style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.15em", color: "rgba(93,228,199,0.5)", marginBottom: 8 }}>
         What It Does
       </p>
@@ -431,7 +565,7 @@ function NRLPaper() {
 
 function VachaOverview() {
   return (
-    <div className="scroll-hidden" style={{ padding: 14, fontSize: 11, lineHeight: 1.6, height: "100%" }}>
+    <div className="scroll-hidden" style={{ padding: 14, fontSize: 11, lineHeight: 1.6 }}>
       <p style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.15em", color: "rgba(93,228,199,0.5)", marginBottom: 8 }}>
         What It Does
       </p>
@@ -505,7 +639,7 @@ function DeedWaitlist() {
   };
 
   return (
-    <div style={{ padding: 20, fontSize: 11, lineHeight: 1.6, display: "flex", flexDirection: "column", height: "100%" }}>
+    <div style={{ padding: 20, fontSize: 11, lineHeight: 1.6, display: "flex", flexDirection: "column" }}>
       <p style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.15em", color: "rgba(93,228,199,0.5)", marginBottom: 6 }}>
         Deed
       </p>

@@ -5,6 +5,7 @@ import { MacWindow } from "@/components/MacWindow";
 import { Terminal } from "@/components/Terminal";
 import { ProjectWindows } from "@/components/ProjectWindows";
 import { BootSequence } from "@/components/BootSequence";
+import { useIsMobile } from "@/hooks/useIsMobile";
 
 export default function Home() {
   const [booted, setBooted] = useState(false);
@@ -12,6 +13,8 @@ export default function Home() {
   const [openProject, setOpenProject] = useState<string | null>(null);
   const [focusedWindow, setFocusedWindow] = useState("terminal");
   const [terminalVisible, setTerminalVisible] = useState(true);
+  const [hasAutoTyped, setHasAutoTyped] = useState(false);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     if (booted) {
@@ -37,8 +40,8 @@ export default function Home() {
     return <BootSequence onComplete={() => setBooted(true)} />;
   }
 
-  // Snap terminal to left half when deed is open
-  const terminalX = openProject === "deed"
+  // Desktop: snap terminal left when deed is open
+  const terminalX = !isMobile && openProject === "deed"
     ? (typeof window !== "undefined" ? Math.round(window.innerWidth / 4 - 290) : 20)
     : undefined;
 
@@ -51,14 +54,21 @@ export default function Home() {
       }}
     >
       {/* Desktop wallpaper */}
-      <div
-        className="absolute inset-0 bg-no-repeat"
-        style={{
-          backgroundImage: "url('/bg.png')",
-          backgroundSize: "100% 100%",
-          backgroundPosition: "center",
-        }}
-      />
+      {!isMobile && (
+        <div
+          className="absolute inset-0 bg-no-repeat"
+          style={{
+            backgroundImage: "url('/bg.png')",
+            backgroundSize: "100% 100%",
+            backgroundPosition: "center",
+          }}
+        />
+      )}
+
+      {/* Mobile: dark bg */}
+      {isMobile && (
+        <div className="absolute inset-0" style={{ background: "#1a1b26" }} />
+      )}
 
       {/* Project detail windows */}
       {openProject && (
@@ -72,7 +82,7 @@ export default function Home() {
       )}
 
       {/* Main terminal */}
-      {terminalVisible && (
+      {terminalVisible && (!isMobile || !openProject) && (
         <MacWindow
           title="aahil@valliani — ~"
           width={580}
@@ -83,7 +93,7 @@ export default function Home() {
           zIndex={focusedWindow === "terminal" ? 50 : 10}
           onFocus={() => setFocusedWindow("terminal")}
         >
-          <Terminal onOpenProject={handleOpenProject} onCloseProject={handleCloseProject} />
+          <Terminal onOpenProject={handleOpenProject} onCloseProject={handleCloseProject} autoTypeAbout={!hasAutoTyped} onAutoTypeDone={() => setHasAutoTyped(true)} />
         </MacWindow>
       )}
     </div>

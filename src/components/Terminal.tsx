@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useIsMobile } from "@/hooks/useIsMobile";
 
 interface TerminalLine {
   type: "input" | "output" | "ascii" | "system" | "link";
@@ -11,6 +12,8 @@ interface TerminalLine {
 interface TerminalProps {
   onOpenProject: (projectId: string) => void;
   onCloseProject: () => void;
+  autoTypeAbout?: boolean;
+  onAutoTypeDone?: () => void;
 }
 
 const ASCII_NAME = [
@@ -117,7 +120,8 @@ const PROJECT_MAP: Record<string, string> = {
 
 const S = 11;
 
-export function Terminal({ onOpenProject, onCloseProject }: TerminalProps) {
+export function Terminal({ onOpenProject, onCloseProject, autoTypeAbout = false, onAutoTypeDone }: TerminalProps) {
+  const isMobile = useIsMobile();
   const [lines, setLines] = useState<TerminalLine[]>(WELCOME_LINES);
   const [input, setInput] = useState("");
   const [history, setHistory] = useState<string[]>([]);
@@ -125,12 +129,66 @@ export function Terminal({ onOpenProject, onCloseProject }: TerminalProps) {
   const [showAutocomplete, setShowAutocomplete] = useState(false);
   const [selectedSuggestion, setSelectedSuggestion] = useState(0);
   const [cursorVisible, setCursorVisible] = useState(true);
+  const [autoTyping, setAutoTyping] = useState(autoTypeAbout);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const interval = setInterval(() => setCursorVisible((v) => !v), 530);
     return () => clearInterval(interval);
+  }, []);
+
+  // Auto-type "/about" on first render (only when told to)
+  useEffect(() => {
+    if (!autoTypeAbout) return;
+    const command = "/about";
+    const slashDelay = 600;     // time before "/" appears
+    const pauseAfterSlash = 400; // pause after "/" before rest types
+    const charDelay = 130;       // per-character after the slash
+    const submitDelay = 500;     // pause before "enter"
+    let cancelled = false;
+
+    const timers: ReturnType<typeof setTimeout>[] = [];
+
+    // Type the "/" first
+    timers.push(
+      setTimeout(() => {
+        if (cancelled) return;
+        setInput("/");
+        setShowAutocomplete(false);
+      }, slashDelay)
+    );
+
+    // Then type "a", "b", "o", "u", "t" one by one
+    for (let i = 1; i < command.length; i++) {
+      timers.push(
+        setTimeout(() => {
+          if (cancelled) return;
+          setInput(command.slice(0, i + 1));
+          setShowAutocomplete(false);
+        }, slashDelay + pauseAfterSlash + (i - 1) * charDelay)
+      );
+    }
+
+    const totalTypeTime = slashDelay + pauseAfterSlash + (command.length - 2) * charDelay;
+
+    timers.push(
+      setTimeout(() => {
+        if (cancelled) return;
+        setInput("");
+        setShowAutocomplete(false);
+        setAutoTyping(false);
+        onAutoTypeDone?.();
+        const inputLine: TerminalLine = { type: "input", content: command };
+        setLines((prev) => [...prev, inputLine, ...ABOUT_OUTPUT]);
+        setHistory((prev) => [command, ...prev]);
+      }, totalTypeTime + submitDelay)
+    );
+
+    return () => {
+      cancelled = true;
+      timers.forEach(clearTimeout);
+    };
   }, []);
 
   const suggestions = useMemo(() => {
@@ -217,7 +275,7 @@ export function Terminal({ onOpenProject, onCloseProject }: TerminalProps) {
                 <span style={{ color: "rgba(255,255,255,0.7)" }}>{line.content}</span>
               </span>
             ) : line.type === "ascii" ? (
-              <span style={{ display: "block", fontSize: 7, lineHeight: 1.15, color: "#5de4c7", fontWeight: 700 }}>
+              <span style={{ display: "block", fontSize: isMobile ? 4 : 7, lineHeight: 1.15, color: "#5de4c7", fontWeight: 700 }}>
                 {line.content}
               </span>
             ) : line.type === "system" ? (
@@ -263,18 +321,22 @@ export function Terminal({ onOpenProject, onCloseProject }: TerminalProps) {
           </div>
         )}
 
-        <div style={{ display: "flex", alignItems: "center", padding: "6px 14px", gap: 6, borderTop: "1px solid rgba(255,255,255,0.05)", background: "#1a1b26", fontSize: S }}>
-          <span style={{ fontSize: S, color: "#5de4c7" }}>~</span>
+        <div style={{
+          display: "flex", alignItems: "center", padding: "6px 14px", gap: 6,
+          borderTop: "1px solid rgba(255,255,255,0.05)", background: "#1a1b26", fontSize: S,
+          ...(isMobile ? { transform: "scale(0.6875)", transformOrigin: "left center", width: "145.45%" } : {}),
+        }}>
+          <span style={{ fontSize: isMobile ? 16 : S, color: "#5de4c7" }}>~</span>
           <input
             ref={inputRef}
             type="text"
             value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
+            onChange={(e) => { if (!autoTyping) setInput(e.target.value); }}
+            onKeyDown={(e) => { if (!autoTyping) handleKeyDown(e); }}
             autoFocus
             spellCheck={false}
             autoComplete="off"
-            style={{ flex: 1, background: "transparent", color: "rgba(255,255,255,0.8)", fontSize: S, border: "none", outline: "none", caretColor: cursorVisible ? "#5de4c7" : "transparent", padding: 0 }}
+            style={{ flex: 1, background: "transparent", color: "rgba(255,255,255,0.8)", fontSize: isMobile ? 16 : S, border: "none", outline: "none", caretColor: cursorVisible ? "#5de4c7" : "transparent", padding: 0 }}
           />
         </div>
       </div>
